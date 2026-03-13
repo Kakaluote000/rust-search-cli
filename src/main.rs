@@ -2,10 +2,20 @@
 //! 
 //! Usage: rust-search-cli [OPTIONS] <PATTERN> <PATH>
 
+mod search;
+mod walker;
+mod output;
+
 use anyhow::Result;
 use clap::{Parser, ArgAction};
+use search::SearchConfig;
 use std::path::PathBuf;
+use std::time::Instant;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use walker::FileWalker;
+use output::OutputFormatter;
+
+use rayon::prelude::*;
 
 /// Search pattern and path
 #[derive(Parser, Debug)]
@@ -105,52 +115,98 @@ fn main() -> Result<()> {
         _ => anyhow::bail!("Invalid color value: {}. Use 'auto', 'always', or 'never'", cli.color),
     };
     
-    // Build search config
+    // Validate path
+    if !cli.path.exists() {
+        anyhow::bail!("Path does not exist: {:?}", cli.path);
+    }
+
+    // Build search configuration
     let config = SearchConfig {
-        pattern: cli.pattern,
-        path: cli.path,
+        pattern: cli.pattern.clone(),
+        path: cli.path.clone(),
         ignore_case: cli.ignore_case,
         invert_match: cli.invert_match,
         line_number: cli.line_number,
         only_matching: cli.only_matching,
         recursive: cli.recursive,
         max_depth: cli.max_depth,
-        exclude: cli.exclude,
-        file_type: cli.file_type,
+        exclude: cli.exclude.clone(),
+        file_type: cli.file_type.clone(),
         hidden: cli.hidden,
         follow_symlinks: cli.follow_symlinks,
         count: cli.count,
         files_with_matches: cli.files_with_matches,
         quiet: cli.quiet,
-        color: color_mode,
+        color: color_mode.clone(),
     };
-    
-    tracing::info!("Search config: {:?}", config);
-    
-    println!("✓ CLI parsing complete - Ready to implement search logic");
-    println!("  Pattern: {}", config.pattern);
-    println!("  Path: {:?}", config.path);
-    
-    Ok(())
-}
 
-/// Search configuration
-#[derive(Debug, Clone)]
-struct SearchConfig {
-    pattern: String,
-    path: PathBuf,
-    ignore_case: bool,
-    invert_match: bool,
-    line_number: bool,
-    only_matching: bool,
-    recursive: bool,
-    max_depth: Option<usize>,
-    exclude: Vec<String>,
-    file_type: Vec<String>,
-    hidden: bool,
-    follow_symlinks: bool,
-    count: bool,
-    files_with_matches: bool,
-    quiet: bool,
-    color: String,
+    // Build search engine
+    let engine = config.build_engine()?;
+    tracing::info!("Search engine created");
+
+    // Build file walker
+    let walker = FileWalker::new(
+        config.max_depth.clone(),
+        config.exclude.clone(),
+        config.file_type.clone(),
+        config.hidden,
+        config.follow_symlinks,
+    );
+
+    // Collect files to search
+    let files = walker.walk(&cli.path);
+    tracing::info!("Found {} files to search", files.len());
+
+    // Start timing
+    let start_time = Instant::now();
+
+    // Search files in parallel
+    let results: Vec<_> = files
+        .par_iter()
+        .filter_map(|file| {
+            match engine.search_file(file) {
+                Ok(Some(result)) => Some(result),
+                Ok(None) => None,
+                Err(e) => {
+                    tracing::warn!("Error searching {:?}: {}", file, e);
+                    None
+                }
+            }
+        })
+        .collect();
+
+    let elapsed = start_time.elapsed();
+
+    // Output results
+    let formatter = OutputFormatter::new(&color_mode, cli.line_number, cli.only_matching);
+    let mut total_matches = 0;
+    let results_count = results.len();
+
+    for result in &results {
+        total_matches += result.total_matches;
+
+        if cli.files_with_matches {
+            formatter.print_filename(&result.file_path);
+        } else if cli.count {
+            formatter.print_count(&result.file_path, result.total_matches);
+        } else {
+            if !cli.quiet {
+                formatter.print_file_header(&result.file_path);
+                formatter.print_result(&result);
+            }
+        }
+    }
+
+    // Print stats if verbose or not quiet
+    if cli.verbose || !cli.quiet {
+        println!("\n--- Search Statistics ---");
+        println!("Files searched: {}", files.len());
+        println!("Files with matches: {}", results_count);
+        println!("Total matches: {}", total_matches);
+        println!("Time elapsed: {:?}", elapsed);
+    }
+
+    tracing::info!("Search complete: {} matches in {:?}", total_matches, elapsed);
+
+    Ok(())
 }
