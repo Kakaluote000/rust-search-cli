@@ -1,7 +1,6 @@
 //! Output module - handles result formatting and display
 
 use crate::search::SearchResult;
-use std::io::Write;
 
 /// Output color modes
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -100,15 +99,7 @@ impl OutputFormatter {
 
 // ANSI color codes
 const RED: &str = "\x1b[31m";
-const GREEN: &str = "\x1b[32m";
-const YELLOW: &str = "\x1b[33m";
-const BLUE: &str = "\x1b[34m";
 const RESET: &str = "\x1b[0m";
-
-/// Check if stdout is a TTY
-pub fn is_tty() -> bool {
-    atty::is(atty::Stream::Stdout)
-}
 
 #[cfg(test)]
 mod tests {

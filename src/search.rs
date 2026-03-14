@@ -19,10 +19,12 @@ pub struct SearchResult {
     pub file_path: String,
     pub matches: Vec<Match>,
     pub total_matches: usize,
-    pub line_count: usize,
+    #[allow(dead_code)]
+    line_count: usize,
 }
 
 /// Search engine with pattern matching
+#[allow(dead_code)]
 pub struct SearchEngine {
     regex: Regex,
     ignore_case: bool,
@@ -121,6 +123,7 @@ impl SearchEngine {
 }
 
 /// Search configuration shared across threads
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct SearchConfig {
     pub pattern: String,
