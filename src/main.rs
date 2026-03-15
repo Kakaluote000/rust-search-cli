@@ -2,12 +2,14 @@
 //! 
 //! Usage: rust-search-cli [OPTIONS] <PATTERN> <PATH>
 
+mod error;
 mod search;
 mod walker;
 mod output;
 
 use anyhow::Result;
 use clap::{Parser, ArgAction};
+use error::AppError;
 use search::SearchConfig;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -112,12 +114,14 @@ fn main() -> Result<()> {
     // Validate color argument
     let color_mode = match cli.color.as_str() {
         "auto" | "always" | "never" => cli.color.clone(),
-        _ => anyhow::bail!("Invalid color value: {}. Use 'auto', 'always', or 'never'", cli.color),
+        _ => return Err(AppError::InvalidArgument(
+            format!("Invalid color value: {}. Use 'auto', 'always', or 'never'", cli.color)
+        ).into()),
     };
     
     // Validate path
     if !cli.path.exists() {
-        anyhow::bail!("Path does not exist: {:?}", cli.path);
+        return Err(AppError::PathNotFound(cli.path).into());
     }
 
     // Build search configuration
