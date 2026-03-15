@@ -52,18 +52,6 @@ impl SearchEngine {
         })
     }
 
-    /// Set invert match mode
-    pub fn with_invert_match(mut self, invert: bool) -> Self {
-        self.invert_match = invert;
-        self
-    }
-
-    /// Set only matching mode
-    pub fn with_only_matching(mut self, only: bool) -> Self {
-        self.only_matching = only;
-        self
-    }
-
     /// Search a file and return results
     pub fn search_file(&self, path: &Path) -> Result<Option<SearchResult>> {
         let content = match std::fs::read_to_string(path) {
