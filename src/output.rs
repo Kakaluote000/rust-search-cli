@@ -51,7 +51,7 @@ impl OutputFormatter {
                 // Print only the matching part
                 let line = &m.line[m.start..m.end];
                 if self.color_mode.should_color(atty::is(atty::Stream::Stdout)) {
-                    print!("{}", self.highlight(line, &RED));
+                    print!("{}", self.highlight(line, RED));
                 } else {
                     print!("{}", line);
                 }
@@ -62,7 +62,7 @@ impl OutputFormatter {
                     print!("{}:", m.line_number);
                 }
                 if self.color_mode.should_color(atty::is(atty::Stream::Stdout)) {
-                    println!("{}", self.highlight_line(&m.line, &RED, &RESET));
+                    println!("{}", self.highlight_line(&m.line, RED, RESET));
                 } else {
                     println!("{}", m.line);
                 }
@@ -86,12 +86,12 @@ impl OutputFormatter {
     }
 
     /// Highlight a string with ANSI codes
-    fn highlight<'a>(&self, text: &'a str, color: &str) -> String {
+    fn highlight(&self, text: &str, color: &str) -> String {
         format!("{}{}{}", color, text, RESET)
     }
 
     /// Highlight matches in a line
-    fn highlight_line<'a>(&self, line: &str, color: &str, reset: &str) -> String {
+    fn highlight_line(&self, line: &str, color: &str, reset: &str) -> String {
         // Simple implementation - just return the line with color
         format!("{}{}{}", color, line, reset)
     }

@@ -150,7 +150,7 @@ fn main() -> Result<()> {
 
     // Build file walker
     let walker = FileWalker::new(
-        config.max_depth.clone(),
+        config.max_depth,
         config.exclude.clone(),
         config.file_type.clone(),
         config.hidden,
@@ -193,11 +193,9 @@ fn main() -> Result<()> {
             formatter.print_filename(&result.file_path);
         } else if cli.count {
             formatter.print_count(&result.file_path, result.total_matches);
-        } else {
-            if !cli.quiet {
-                formatter.print_file_header(&result.file_path);
-                formatter.print_result(&result);
-            }
+        } else if !cli.quiet {
+            formatter.print_file_header(&result.file_path);
+            formatter.print_result(result);
         }
     }
 
